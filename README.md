@@ -95,7 +95,48 @@ rocky_server_ip ansible_user=votre_utilisateur_ssh ansible_ssh_private_key_file=
 # [webservers]
 # ubuntu-web-01.example.com ansible_user=deployuser ansible_ssh_private_key_file=~/.ssh/id_rsa
 # rocky-web-01.example.com ansible_user=deployuser ansible_ssh_private_key_file=~/.ssh/id_rsa
+### 1. Cloner le dépôt
 
+```bash
+git clone [https://github.com/votre_utilisateur/ansible_wordpress_deployment.git](https://github.com/votre_utilisateur/ansible_wordpress_deployment.git)
+cd ansible_wordpress_deployment
+# inventory.ini
+
+[ubuntu_servers]
+client2 ansible_host=127.0.0.1 ansible_port=2224 ansible_user=root ansible_ssh_pass=P@ssw0rd
+
+[rocky_servers]
+client4 ansible_host=127.0.0.1 ansible_port=2226 ansible_user=root ansible_ssh_pass=P@ssw0rd
+. Configurer les Variables Secrètes
+Ce projet utilise des mots de passe en clair pour simplifier l'exemple. C'est FORTEMENT DÉCONSEILLÉ pour la production. Pour un environnement sécurisé, utilisez Ansible Vault.
+
+Si vous avez précédemment créé un fichier group_vars/all/password.yml chiffré, vous pouvez le supprimer pour cet exemple :
+
+Bash
+
+rm group_vars/all/password.yml
+Les mots de passe sont directement définis dans la section vars du playbook playbooks/deploy_wordpress.yml.
+
+4. Lancer le Déploiement
+Exécutez le playbook principal en spécifiant votre inventaire.
+
+Bash
+
+ansible-playbook -i inventory.ini playbooks/deploy_wordpress.yml -e 'ansible_ssh_common_args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"'
+Si l'exécution se déroule sans erreur, votre installation WordPress devrait être accessible via l'adresse IP ou le nom d'hôte de votre serveur, généralement sur http://votre_serveur_ip_ou_nom_hote:[port_mappé]. Par exemple, pour client2, ce serait http://localhost:8084.
+
+Compatibilité OS
+Ce projet utilise les faits (facts) collectés par Ansible (ansible_os_family) pour adapter les tâches aux systèmes d'exploitation. Il prend en charge :
+
+Debian-based systems (comme Ubuntu) utilisant apt et les services Apache (apache2) et MariaDB (mariadb).
+
+RedHat-based systems (comme Rocky Linux) utilisant yum/dnf et les services HTTPD (httpd) et MariaDB (mariadb).
+
+Contributions
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir des issues ou soumettre des Pull Requests.
+
+Licence
+Ce projet est sous licence MIT License.
 
 
 
