@@ -135,9 +135,13 @@ RedHat-based systems (comme Rocky Linux) utilisant yum/dnf et les services HTTPD
 Contributions
 Les contributions sont les bienvenues ! N'hésitez pas à ouvrir des issues ou soumettre des Pull Requests.
 
+
 Licence
-Ce projet est sous licence MIT License.
+Ce proj
+et est sous licence MIT License.
 
 
 
 
+
+![image](https://github.com/user-attachments/assets/d52dbeae-8e4b-499b-95f3-8a8b0b6996c1)
