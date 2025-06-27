@@ -1,0 +1,149 @@
+---
+- name: Supprimer la page par défaut  (Debian/Ubuntu)
+  ansible.builtin.file:
+    path: /var/www/html/index.html
+    state: absent
+  when: ansible_os_family == "Debian"
+
+- name: Supprimer la page par défaut d'Apache (RedHat/Rocky)
+  ansible.builtin.file:
+    path: /etc/httpd/conf.d/welcome.conf 
+    state: absent
+  when: ansible_os_family == "RedHat"
+
+- name: Télécharger et décompresser WordPress
+  ansible.builtin.unarchive:
+    src: https://wordpress.org/latest.zip
+    dest: /tmp
+    remote_src: yes
+    creates: /tmp/wordpress
+
+- name: Copier les fichiers WordPress 
+  ansible.builtin.copy:
+    src: /tmp/wordpress/
+    dest: /var/www/html/
+    remote_src: yes
+    owner: www-data
+    group: www-data
+    mode: '0755'
+    directory_mode: '0755'
+  when: ansible_os_family == "Debian" 
+
+- name: Copier les fichiers WordPress vers la racine web (RedHat/Rocky)
+  ansible.builtin.copy:
+    src: /tmp/wordpress/
+    dest: /var/www/html/
+    remote_src: yes
+    owner: apache
+    group: apache
+    mode: '0755'
+    directory_mode: '0755'
+  when: ansible_os_family == "RedHat" 
+
+- name:  permissions correctes pour (Debian/Ubuntu)
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: www-data
+    group: www-data
+    recurse: yes
+    state: directory
+  when: ansible_os_family == "Debian"
+
+- name: Assurer les permissions correctes  (RedHat/Rocky)
+  ansible.builtin.file:
+    path: /var/www/html
+    owner: apache
+    group: apache
+    recurse: yes
+    state: directory
+  when: ansible_os_family == "RedHat"
+
+- name:  wp-config.php à partir du template (Debian/Ubuntu)
+  ansible.builtin.template:
+    src: wp-config.php.j2
+    dest: /var/www/html/wp-config.php
+    owner: www-data
+    group: www-data
+    mode: '0640'
+  when: ansible_os_family == "Debian"
+  notify: Redémarrer apache2
+
+- name:  wp-config.php à partir du template (RedHat/Rocky)
+  ansible.builtin.template:
+    src: wp-config.php.j2
+    dest: /var/www/html/wp-config.php
+    owner: apache
+    group: apache
+    mode: '0640'
+  when: ansible_os_family == "RedHat"
+  notify: Redémarrer httpd
+
+- name:  Apache pour WordPress (Debian/Ubuntu)
+  ansible.builtin.blockinfile:
+    path: /etc/apache2/sites-available/wordpress.conf
+    create: yes
+    block: |
+      <VirtualHost *:80>
+          ServerAdmin admin@localhost
+          DocumentRoot /var/www/html
+          <Directory /var/www/html>
+              AllowOverride All
+              Require all granted
+          </Directory>
+          ErrorLog ${APACHE_LOG_DIR}/error.log
+          CustomLog ${APACHE_LOG_DIR}/access.log combined
+      </VirtualHost>
+  when: ansible_os_family == "Debian"
+  notify: Recharger apache2
+
+- name: Configurer Apache pour WordPress (RedHat/Rocky)
+  ansible.builtin.blockinfile:
+    path: /etc/httpd/conf.d/wordpress.conf 
+    create: yes
+    block: |
+      <VirtualHost *:80>
+          ServerAdmin admin@localhost
+          DocumentRoot /var/www/html
+          <Directory /var/www/html>
+              AllowOverride All
+              Require all granted
+          </Directory>
+          ErrorLog /var/log/httpd/error_log
+          CustomLog /var/log/httpd/access_log combined
+      </VirtualHost>
+  when: ansible_os_family == "RedHat"
+  notify: Recharger httpd
+
+- name: Activer le site WordPress (Debian/Ubuntu)
+  ansible.builtin.command: a2ensite wordpress.conf
+  args:
+    creates: /etc/apache2/sites-enabled/wordpress.conf
+  when: ansible_os_family == "Debian"
+  notify: Recharger apache2
+
+
+- name: Activer le module de réécriture Apache (Debian/Ubuntu)
+  ansible.builtin.apache2_module:
+    state: present
+    name: rewrite
+  when: ansible_os_family == "Debian"
+  notify: Recharger apache2
+
+- name: Activer le module de réécriture Apache (RedHat/Rocky)
+  ansible.builtin.apache2_module:
+    state: present
+    name: rewrite 
+  when: ansible_os_family == "RedHat"
+  notify: Recharger httpd
+
+- name: Redémarrer le service Apache (Debian/Ubuntu)
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  when: ansible_os_family == "Debian"
+
+- name: Redémarrer le service Apache (RedHat/Rocky)
+  ansible.builtin.service:
+    name: httpd
+    state: restarted
+  when: ansible_os_family == "RedHat"

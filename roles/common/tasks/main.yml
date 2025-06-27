@@ -1,0 +1,41 @@
+---
+- name: Mettre à jour le cache apt (pour Debian/Ubuntu)
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Mettre à jour les paquets (pour Debian/Ubuntu)
+  ansible.builtin.apt:
+    upgrade: dist
+  when: ansible_os_family == "Debian"
+
+- name: Mettre à jour les paquets (pour RedHat/Rocky)
+  ansible.builtin.yum:
+    name: "*"
+    state: latest
+  when: ansible_os_family == "RedHat"
+
+- name: Installer les paquets nécessaires (pour Debian/Ubuntu)
+  ansible.builtin.apt:
+    name:
+      - apache2
+      - php
+      - libapache2-mod-php
+      - php-mysql
+      - mariadb-server
+      - wget
+      - unzip
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Installer les paquets nécessaires (pour RedHat/Rocky)
+  ansible.builtin.yum:
+    name:
+      - httpd
+      - php
+      - php-mysqlnd # Equivalent de php-mysql pour RedHat/Rocky
+      - mariadb-server
+      - wget
+      - unzip
+    state: present
+  when: ansible_os_family == "RedHat"

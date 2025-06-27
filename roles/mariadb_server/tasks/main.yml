@@ -1,0 +1,52 @@
+---
+- name: Démarrer le service MariaDB et l'activer au démarrage
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: Attendre le démarrage de MariaDB
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Sécuriser MariaDB - Modifier le mot de passe root
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ mariadb_root_password }}"
+    login_user: root
+    login_password: ""
+    state: present
+  no_log: true
+
+- name: Sécuriser MariaDB - Supprimer les utilisateurs anonymes
+  community.mysql.mysql_user:
+    name: ''
+    host: localhost
+    state: absent
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Sécuriser MariaDB - Supprimer la base de données de test
+  community.mysql.mysql_db:
+    name: test
+    state: absent
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Créer la base de données WordPress
+  community.mysql.mysql_db:
+    name: "{{ wordpress_db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"
+
+- name: Créer l'utilisateur de la base de données WordPress
+  community.mysql.mysql_user:
+    name: "{{ wordpress_db_user }}"
+    host: localhost
+    password: "{{ wordpress_db_password }}"
+    priv: "{{ wordpress_db_name }}.*:ALL"
+    state: present
+    login_user: root
+    login_password: "{{ mariadb_root_password }}"

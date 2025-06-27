@@ -1,0 +1,24 @@
+---
+- name: Recharger apache2
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: ansible_os_family == "Debian"
+
+- name: Recharger httpd
+  ansible.builtin.service:
+    name: httpd
+    state: reloaded
+  when: ansible_os_family == "RedHat"
+
+- name: Redémarrer apache2
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  when: ansible_os_family == "Debian"
+
+- name: Redémarrer httpd
+  ansible.builtin.service:
+    name: httpd
+    state: restarted
+  when: ansible_os_family == "RedHat"

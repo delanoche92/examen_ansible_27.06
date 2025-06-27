@@ -1,0 +1,16 @@
+---
+- name: Déployer WordPress
+  hosts: all
+  become: yes 
+
+  vars:
+    # Les mots de passe (mariadb_root_password et wordpress_db_password)
+    # sont maintenant chargés automatiquement depuis group_vars/all/password.yml (chiffré)
+    wordpress_db_name: "wordpress"
+    wordpress_db_user: "example"
+    wordpress_db_host: "localhost" 
+
+  roles:
+    - role: common
+    - role: mariadb_server
+    - role: wordpress
