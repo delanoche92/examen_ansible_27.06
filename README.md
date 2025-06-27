@@ -31,6 +31,28 @@ Ce projet Ansible permet de déployer une stack WordPress complète (Apache, PHP
 * Les serveurs cibles doivent être soit **Ubuntu** (ou une distribution basée sur Debian), soit **Rocky Linux** (ou une distribution basée sur RedHat comme CentOS Stream, AlmaLinux).
 
 ## Structure du Projet
+ansible_wordpress_deployment/
+├── playbooks/
+│   └── deploy_wordpress.yml  # Playbook principal pour le déploiement
+├── inventory.ini             # Fichier d'inventaire des serveurs cibles
+└── roles/
+    ├── common/               # Rôle pour les tâches système communes (màj, paquets)
+    │   ├── tasks/
+    │   │   └── main.yml
+    │   └── handlers/
+    │       └── main.yml
+    ├── mariadb_server/       # Rôle pour l'installation et la configuration de MariaDB
+    │   ├── tasks/
+    │   │   └── main.yml
+    │   └── handlers/
+    │       └── main.yml
+    └── wordpress/            # Rôle pour le déploiement et la configuration de WordPress (Apache, PHP)
+        ├── tasks/
+        │   └── main.yml
+        ├── templates/
+        │   └── wp-config.php.j2 # Modèle Jinja2 pour la configuration WordPress
+        └── handlers/
+            └── main.yml
 ## Rôles
 
 Ce projet est organisé en trois rôles principaux pour une meilleure modularité et réutilisation.
