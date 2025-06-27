@@ -1,5 +1,5 @@
 ---
-- name: Supprimer la page par défaut  (Debian/Ubuntu)
+- name: Supprimer la page par défaut d'Apache (Debian/Ubuntu)
   ansible.builtin.file:
     path: /var/www/html/index.html
     state: absent
@@ -7,40 +7,54 @@
 
 - name: Supprimer la page par défaut d'Apache (RedHat/Rocky)
   ansible.builtin.file:
-    path: /etc/httpd/conf.d/welcome.conf 
+    path: /etc/httpd/conf.d/welcome.conf
     state: absent
   when: ansible_os_family == "RedHat"
 
-- name: Télécharger et décompresser WordPress
+- name: Créer un répertoire temporaire pour WordPress
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: wordpress
+  register: wordpress_temp
+
+- name: Debug de wordpress_temp
+  ansible.builtin.debug:
+    var: wordpress_temp
+
+- name: Télécharger et décompresser WordPress dans le répertoire temporaire
   ansible.builtin.unarchive:
     src: https://wordpress.org/latest.zip
-    dest: /tmp
+    dest: "{{ wordpress_temp.path | default('/tmp/wordpress') }}"
     remote_src: yes
-    creates: /tmp/wordpress
 
-- name: Copier les fichiers WordPress 
+- name: Copier les fichiers WordPress vers la racine web (Debian/Ubuntu)
   ansible.builtin.copy:
-    src: /tmp/wordpress/
+    src: "{{ wordpress_temp.path | default('/tmp/wordpress') }}/wordpress/"
     dest: /var/www/html/
     remote_src: yes
     owner: www-data
     group: www-data
     mode: '0755'
     directory_mode: '0755'
-  when: ansible_os_family == "Debian" 
+  when: ansible_os_family == "Debian"
 
 - name: Copier les fichiers WordPress vers la racine web (RedHat/Rocky)
   ansible.builtin.copy:
-    src: /tmp/wordpress/
+    src: "{{ wordpress_temp.path | default('/tmp/wordpress') }}/wordpress/"
     dest: /var/www/html/
     remote_src: yes
     owner: apache
     group: apache
     mode: '0755'
     directory_mode: '0755'
-  when: ansible_os_family == "RedHat" 
+  when: ansible_os_family == "RedHat"
 
-- name:  permissions correctes pour (Debian/Ubuntu)
+- name: Nettoyer le répertoire temporaire
+  ansible.builtin.file:
+    path: "{{ wordpress_temp.path | default('/tmp/wordpress') }}"
+    state: absent
+
+- name: Assurer les permissions correctes pour /var/www/html (Debian/Ubuntu)
   ansible.builtin.file:
     path: /var/www/html
     owner: www-data
@@ -49,7 +63,7 @@
     state: directory
   when: ansible_os_family == "Debian"
 
-- name: Assurer les permissions correctes  (RedHat/Rocky)
+- name: Assurer les permissions correctes pour /var/www/html (RedHat/Rocky)
   ansible.builtin.file:
     path: /var/www/html
     owner: apache
@@ -58,7 +72,7 @@
     state: directory
   when: ansible_os_family == "RedHat"
 
-- name:  wp-config.php à partir du template (Debian/Ubuntu)
+- name: Générer wp-config.php à partir du template (Debian/Ubuntu)
   ansible.builtin.template:
     src: wp-config.php.j2
     dest: /var/www/html/wp-config.php
@@ -68,7 +82,7 @@
   when: ansible_os_family == "Debian"
   notify: Redémarrer apache2
 
-- name:  wp-config.php à partir du template (RedHat/Rocky)
+- name: Générer wp-config.php à partir du template (RedHat/Rocky)
   ansible.builtin.template:
     src: wp-config.php.j2
     dest: /var/www/html/wp-config.php
@@ -78,7 +92,7 @@
   when: ansible_os_family == "RedHat"
   notify: Redémarrer httpd
 
-- name:  Apache pour WordPress (Debian/Ubuntu)
+- name: Configurer Apache pour WordPress (Debian/Ubuntu)
   ansible.builtin.blockinfile:
     path: /etc/apache2/sites-available/wordpress.conf
     create: yes
@@ -98,7 +112,7 @@
 
 - name: Configurer Apache pour WordPress (RedHat/Rocky)
   ansible.builtin.blockinfile:
-    path: /etc/httpd/conf.d/wordpress.conf 
+    path: /etc/httpd/conf.d/wordpress.conf
     create: yes
     block: |
       <VirtualHost *:80>
@@ -121,7 +135,6 @@
   when: ansible_os_family == "Debian"
   notify: Recharger apache2
 
-
 - name: Activer le module de réécriture Apache (Debian/Ubuntu)
   ansible.builtin.apache2_module:
     state: present
@@ -132,7 +145,7 @@
 - name: Activer le module de réécriture Apache (RedHat/Rocky)
   ansible.builtin.apache2_module:
     state: present
-    name: rewrite 
+    name: rewrite
   when: ansible_os_family == "RedHat"
   notify: Recharger httpd
 
@@ -147,3 +160,4 @@
     name: httpd
     state: restarted
   when: ansible_os_family == "RedHat"
+

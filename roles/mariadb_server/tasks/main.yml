@@ -1,4 +1,6 @@
 ---
+
+
 - name: Démarrer le service MariaDB et l'activer au démarrage
   ansible.builtin.service:
     name: mariadb
@@ -9,44 +11,56 @@
   ansible.builtin.pause:
     seconds: 10
 
-- name: Sécuriser MariaDB - Modifier le mot de passe root
-  community.mysql.mysql_user:
-    name: root
-    host: localhost
-    password: "{{ mariadb_root_password }}"
-    login_user: root
-    login_password: ""
-    state: present
+- name: Vérifier si le mot de passe root est déjà défini
+  ansible.builtin.shell: |
+    mysql -u root -p'{{ mariadb_root_password }}' -e "SELECT 1;" 2>/dev/null && echo "PASSWORD_SET" || echo "NO_PASSWORD"
+  register: mysql_password_check
+  become: yes
+  become_user: root
   no_log: true
 
-- name: Sécuriser MariaDB - Supprimer les utilisateurs anonymes
-  community.mysql.mysql_user:
-    name: ''
-    host: localhost
-    state: absent
-    login_user: root
-    login_password: "{{ mariadb_root_password }}"
-
-- name: Sécuriser MariaDB - Supprimer la base de données de test
-  community.mysql.mysql_db:
-    name: test
-    state: absent
-    login_user: root
-    login_password: "{{ mariadb_root_password }}"
+- name: Sécuriser MariaDB - Configuration complète avec mot de passe vide
+  ansible.builtin.shell: |
+    mysql -u root <<EOF
+    ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mariadb_root_password }}';
+    DELETE FROM mysql.user WHERE User='';
+    DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+    DROP DATABASE IF EXISTS test;
+    DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+    FLUSH PRIVILEGES;
+    EOF
+  become: yes
+  become_user: root
+  when: mysql_password_check.stdout == "NO_PASSWORD"
+  no_log: true
 
 - name: Créer la base de données WordPress
-  community.mysql.mysql_db:
-    name: "{{ wordpress_db_name }}"
-    state: present
-    login_user: root
-    login_password: "{{ mariadb_root_password }}"
+  ansible.builtin.shell: |
+    mysql -u root -p'{{ mariadb_root_password }}' -e "CREATE DATABASE IF NOT EXISTS {{ wordpress_db_name }};"
+  become: yes
+  become_user: root
+  no_log: true
 
-- name: Créer l'utilisateur de la base de données WordPress
-  community.mysql.mysql_user:
-    name: "{{ wordpress_db_user }}"
-    host: localhost
-    password: "{{ wordpress_db_password }}"
-    priv: "{{ wordpress_db_name }}.*:ALL"
-    state: present
-    login_user: root
-    login_password: "{{ mariadb_root_password }}"
+- name: Créer l'utilisateur WordPress et accorder les privilèges
+  ansible.builtin.shell: |
+    mysql -u root -p'{{ mariadb_root_password }}' <<EOF
+    CREATE USER IF NOT EXISTS '{{ wordpress_db_user }}'@'localhost' IDENTIFIED BY '{{ wordpress_db_password }}';
+    GRANT ALL PRIVILEGES ON {{ wordpress_db_name }}.* TO '{{ wordpress_db_user }}'@'localhost';
+    FLUSH PRIVILEGES;
+    EOF
+  become: yes
+  become_user: root
+  no_log: true
+
+- name: Vérifier la configuration de la base de données
+  ansible.builtin.shell: |
+    mysql -u root -p'{{ mariadb_root_password }}' -e "SHOW DATABASES;" | grep {{ wordpress_db_name }}
+  register: db_check
+  become: yes
+  become_user: root
+  no_log: true
+
+- name: Afficher le statut de la base de données
+  ansible.builtin.debug:
+    msg: "Base de données {{ wordpress_db_name }} créée avec succès"
+  when: db_check.rc == 0
